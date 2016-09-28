@@ -50,6 +50,19 @@ home directory, called `$HOME/.update_wordpress_cache`, where it will put the
 actual files unpacked in a `wordpress` directory. This is to prevent the script
 from re-downloading the files when you have multiple sites you want to update.
 
+## Dependencies
+
+The following dependencies are needed to run the software. Please refer to the
+documentation of your operating system for installation instructions (if
+required). Most of this software comes pre-installed on GNU/Linux or Unix
+systems.
+
+* Bash
+* Perl
+* ncurses (for the colours)
+* git (optional)
+* and the Unix tools grep, awk, curl, wget, tar
+
 ## License
 
 The MIT license was used for this script, enclosed in this repository in the
