@@ -66,4 +66,5 @@ systems.
 ## License
 
 The MIT license was used for this script, enclosed in this repository in the
-`LICENSE` file.
+[LICENSE](https://github.com/sandervenema/update-wordpress.sh/blob/master/LICENSE)
+file.
