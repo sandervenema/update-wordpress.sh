@@ -23,6 +23,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Should we be verbose?
+VERBOSE=false
 # controls whether git will autocommit the changes
 GIT_AUTOCOMMIT=true
 # controls whether git will automatically push the changes to upstream
@@ -61,10 +63,18 @@ fi
 LATEST_WORDPRESS_VERSION=$(curl -s https://wordpress.org/download/ | perl -lne 'print $1 if /\(Version (.*)\)/')
 if [[ ! ($LATEST_WORDPRESS_VERSION == $WORDPRESS_VERSION) ]]; then
     echo "Downloading the latest WordPress..."
-    wget -q -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
+    if [[ $VERBOSE ]]; then
+      wget -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
+    else
+      wget -q -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
+    fi
 
     echo "Checking SHA-1 hash..."
-    wget -q -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
+    if [[ $VERBOSE ]]; then
+      wget -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
+    else
+      wget -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
+    fi
     SHA1=$(cat $CACHE_DIR/latest.tar.gz.sha1)
     SHA1_LOCAL=$(sha1sum $CACHE_DIR/latest.tar.gz | awk '{print $1}')
     if [[ ! ($SHA1 == $SHA1_LOCAL) ]]; then
@@ -81,7 +91,11 @@ if [[ ! ($LATEST_WORDPRESS_VERSION == $WORDPRESS_VERSION) ]]; then
         rm -rf $CACHE_DIR/wordpress
     fi
     echo "Unpacking WordPress tarball..."
-    tar xfz $CACHE_DIR/latest.tar.gz -C $CACHE_DIR
+    if [[ $VERBOSE ]]; then
+      tar xfvz $CACHE_DIR/latest.tar.gz -C $CACHE_DIR
+    else
+      tar xfz $CACHE_DIR/latest.tar.gz -C $CACHE_DIR
+    fi
     # Update the version variable to the newly-downloaded version
     WORDPRESS_VERSION=$(cat $WORDPRESS_DIR/readme.html | grep Version | awk '{print $4}')
 else
