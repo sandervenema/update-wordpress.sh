@@ -39,7 +39,7 @@ NC="$(tput sgr0)"
 CACHE_DIR=$HOME/.update_wordpress_cache
 WORDPRESS_URL="https://wordpress.org/latest.tar.gz"
 WORDPRESS_DIR=$CACHE_DIR/wordpress
-WORDPRESS_VERSION=0.0.0 # keep this set to 0.0.0. Will be updated by the script
+WORDPRESS_SHA1=0 # keep this set to 0. Will be updated by the script
 
 # Check if cache directory exists, and create it if necessary
 if [[ ! -d $CACHE_DIR ]]; then
@@ -54,26 +54,26 @@ if [[ ! -d wp-admin && ! -d wp-includes && ! -d wp-content ]]; then
     exit
 fi
 
-# We set WORDPRESS_VERSION when we have a WordPress directory in the cache and
-# it contains a readme.html file with the version.
-if [[ -d $WORDPRESS_DIR && -e $WORDPRESS_DIR/readme.html ]]; then
-    WORDPRESS_VERSION=$(cat $WORDPRESS_DIR/readme.html | grep Version | awk '{print $4}')
+# We set WORDPRESS_SHA1 when we have a WordPress directory in the cache and
+# a latest.tar.gz.sha1 file with the SHA1-hash of the Wordpress tarball.
+if [[ -d $WORDPRESS_DIR && -e $CACHE_DIR/latest.tar.gz.sha1 ]]; then
+    WORDPRESS_SHA1=$(cat $CACHE_DIR/latest.tar.gz.sha1)
 fi
 # Check the version, iff the one on the site is newer, redownload
-LATEST_WORDPRESS_VERSION=$(curl -s https://wordpress.org/download/ | perl -lne 'print $1 if /\(Version (.*)\)/')
-if [[ ! ($LATEST_WORDPRESS_VERSION == $WORDPRESS_VERSION) ]]; then
+LATEST_WORDPRESS_SHA1=$(curl -s https://wordpress.org/latest.tar.gz.sha1)
+if [[ ! ($LATEST_WORDPRESS_SHA1 == $WORDPRESS_SHA1) ]]; then
     echo "Downloading the latest WordPress..."
-    if [[ $VERBOSE ]]; then
+    if $VERBOSE; then
       wget -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
     else
-      wget -q -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
+      wget --quiet -O $CACHE_DIR/latest.tar.gz $WORDPRESS_URL
     fi
 
     echo "Checking SHA-1 hash..."
-    if [[ $VERBOSE ]]; then
+    if $VERBOSE; then
       wget -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
     else
-      wget -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
+      wget --quiet -O $CACHE_DIR/latest.tar.gz.sha1 https://wordpress.org/latest.tar.gz.sha1
     fi
     SHA1=$(cat $CACHE_DIR/latest.tar.gz.sha1)
     SHA1_LOCAL=$(sha1sum $CACHE_DIR/latest.tar.gz | awk '{print $1}')
@@ -91,21 +91,25 @@ if [[ ! ($LATEST_WORDPRESS_VERSION == $WORDPRESS_VERSION) ]]; then
         rm -rf $CACHE_DIR/wordpress
     fi
     echo "Unpacking WordPress tarball..."
-    if [[ $VERBOSE ]]; then
+    if $VERBOSE; then
       tar xfvz $CACHE_DIR/latest.tar.gz -C $CACHE_DIR
     else
       tar xfz $CACHE_DIR/latest.tar.gz -C $CACHE_DIR
     fi
-    # Update the version variable to the newly-downloaded version
-    WORDPRESS_VERSION=$(cat $WORDPRESS_DIR/readme.html | grep Version | awk '{print $4}')
+    # Update the WORDPRESS_SHA1 variable to the hash of the newly-downloaded WP
+    WORDPRESS_SHA1=$SHA1
 else
-    echo "The latest WordPress (version $WORDPRESS_VERSION) is already in cache, using that."
+    echo "The latest WordPress (SHA1: $WORDPRESS_SHA1) is already in cache, using that."
 fi
 
 # Version check
-CURRENT_WORDPRESS_VERSION=$(cat readme.html | grep Version | awk '{print $4}')
-if [[ $CURRENT_WORDPRESS_VERSION == $WORDPRESS_VERSION ]]; then
-    echo -e "${GREEN}WordPress was already updated to version $WORDPRESS_VERSION${NC}"
+if [[ -e latest.sha1 ]]; then
+    CURRENT_WORDPRESS_SHA1=$(cat latest.sha1)
+else
+    CURRENT_WORDPRESS_SHA1=0
+fi
+if [[ $CURRENT_WORDPRESS_SHA1 == $WORDPRESS_SHA1 ]]; then
+    echo -e "${GREEN}WordPress was already updated. (SHA1: $WORDPRESS_SHA1)${NC}"
     exit
 fi
 
@@ -119,7 +123,7 @@ fi
 
 # Ready to party!
 
-echo "Updating WordPress to version $WORDPRESS_VERSION ..."
+echo "Updating WordPress (SHA1: $WORDPRESS_SHA1) ..."
 echo "Removing wp-includes/ and wp-admin/..."
 if [[ -e $GIT && $GIT_REPO == true ]]; then
     $GIT rm -r wp-includes/
@@ -134,13 +138,14 @@ echo "Copying new files..."
 cp -r $WORDPRESS_DIR/wp-{includes,admin} .
 cp $WORDPRESS_DIR/wp-content/*.* wp-content/
 cp $WORDPRESS_DIR/*.* .
+cp $CACHE_DIR/latest.tar.gz.sha1 latest.sha1
 
 if [[ -e $GIT && $GIT_REPO == true ]]; then
     echo "Add new files to git repo..."
     $GIT add .
     if [[ $GIT_AUTOCOMMIT == true ]]; then
         echo "Commit files to git repo..."
-        $GIT commit -a -m "Updated WordPress to version $WORDPRESS_VERSION"
+        $GIT commit -a -m "Updated WordPress (SHA1: $WORDPRESS_SHA1)"
     fi
     if [[ $GIT_PUSH == true && $GIT_AUTOCOMMIT == true ]]; then
         echo "Push changes to remote git repo..."
@@ -148,4 +153,4 @@ if [[ -e $GIT && $GIT_REPO == true ]]; then
     fi
 fi
 
-echo -e "${GREEN}Done! WordPress was successfully updated to version $WORDPRESS_VERSION${NC}"
+echo -e "${GREEN}Done! WordPress was successfully updated. (SHA1: $WORDPRESS_SHA1)${NC}"
